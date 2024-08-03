@@ -1,7 +1,5 @@
 extern crate alloc;
 
-use std::sync::{LazyLock, Mutex};
-
 #[cfg(target_arch = "wasm32")]
 use lol_alloc::{FreeListAllocator, LockedAllocator};
 
@@ -153,7 +151,8 @@ fn paint_apple(apple: Position) {
     );
 }
 
-struct GameState {
+#[wasm_bindgen]
+pub struct GameState {
     snake: Snake,
     apple: Position,
     step_period: i32,
@@ -161,22 +160,65 @@ struct GameState {
     next_reward: i32,
 }
 
-static STATE: LazyLock<Mutex<GameState>> = LazyLock::new(|| {
-    Mutex::new(GameState {
-        snake: Snake {
-            segments: [Position { x: 0, y: 0 }; GRID_WIDTH * GRID_HEIGHT],
-            length: 4,
-            head_index: 3,
-            direction: Direction::Right,
-        },
-        apple: Position { x: 0, y: 0 },
-        step_period: 300,
-        score: 0,
-        next_reward: 10,
-    })
-});
-
+#[wasm_bindgen]
 impl GameState {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> GameState {
+        let mut game_state = GameState {
+            snake: Snake {
+                segments: [Position { x: 0, y: 0 }; GRID_WIDTH * GRID_HEIGHT],
+                length: 4,
+                head_index: 3,
+                direction: Direction::Right,
+            },
+            apple: Position { x: 0, y: 0 },
+            step_period: 300,
+            score: 0,
+            next_reward: 10,
+        };
+        game_state.teleport_apple();
+        game_state.snake.segments[1].x = 1;
+        game_state.snake.segments[2].x = 2;
+        game_state.snake.segments[3].x = 3;
+        game_state.repaint();
+        snake_score_changed(0);
+        game_state
+    }
+
+    pub fn on_key_down(&mut self, code: u32) {
+        match code {
+            KEY_CODE_ARROW_UP => self.change_snake_direction(Direction::Up),
+            KEY_CODE_ARROW_DOWN => self.change_snake_direction(Direction::Down),
+            KEY_CODE_ARROW_LEFT => self.change_snake_direction(Direction::Left),
+            KEY_CODE_ARROW_RIGHT => self.change_snake_direction(Direction::Right),
+            _ => todo!(),
+        }
+    }
+
+    pub fn step(&mut self, _timestamp: i32) {
+        if self.snake_will_eat_apple() {
+            self.snake.grow();
+            self.teleport_apple();
+            self.speedup_game();
+            self.update_score();
+            snake_score_changed(self.score);
+        } else {
+            self.snake.move_ahead();
+        }
+        if self.snake.is_out_of_bounds(GRID_WIDTH, GRID_HEIGHT) || self.snake.eats_himself()
+        {
+            snake_game_over();
+        }
+        self.repaint();
+    }
+
+    fn repaint(&self) {
+        paint_background();
+        paint_snake(&self.snake);
+        paint_apple(self.apple);
+        canvas_fill();
+    }
+
     fn change_snake_direction(&mut self, d: Direction) {
         if direction_is_opposite(self.snake.direction, d) {
             return;
@@ -204,53 +246,4 @@ impl GameState {
         self.apple.x = js_random(GRID_WIDTH);
         self.apple.y = js_random(GRID_HEIGHT);
     }
-}
-
-#[wasm_bindgen]
-pub fn on_key_down(code: u32) {
-    let mut game_state = STATE.lock().unwrap();
-    match code {
-        KEY_CODE_ARROW_UP => game_state.change_snake_direction(Direction::Up),
-        KEY_CODE_ARROW_DOWN => game_state.change_snake_direction(Direction::Down),
-        KEY_CODE_ARROW_LEFT => game_state.change_snake_direction(Direction::Left),
-        KEY_CODE_ARROW_RIGHT => game_state.change_snake_direction(Direction::Right),
-        _ => todo!(),
-    }
-}
-
-fn repaint(game_state: &GameState) {
-    paint_background();
-    paint_snake(&game_state.snake);
-    paint_apple(game_state.apple);
-    canvas_fill();
-}
-
-#[wasm_bindgen]
-pub fn step(_timestamp: i32) {
-    let mut game_state = STATE.lock().unwrap();
-    if game_state.snake_will_eat_apple() {
-        game_state.snake.grow();
-        game_state.teleport_apple();
-        game_state.speedup_game();
-        game_state.update_score();
-        snake_score_changed(game_state.score);
-    } else {
-        game_state.snake.move_ahead();
-    }
-    if game_state.snake.is_out_of_bounds(GRID_WIDTH, GRID_HEIGHT) || game_state.snake.eats_himself()
-    {
-        snake_game_over();
-    }
-    repaint(&game_state);
-}
-
-#[wasm_bindgen(start)]
-fn init() {
-    let mut game_state = STATE.lock().unwrap();
-    game_state.teleport_apple();
-    game_state.snake.segments[1].x = 1;
-    game_state.snake.segments[2].x = 2;
-    game_state.snake.segments[3].x = 3;
-    repaint(&game_state);
-    snake_score_changed(0);
 }
