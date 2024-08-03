@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WASM Snake Game</title>
+        <style>
+            #canvas {
+                border: 1px solid white;
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            #score {
+                font-family: "Courier New", Courier, monospace;
+                font-size: large;
+                color: white;
+                text-align: center;
+            }
+            #buttons {
+                text-align: center;
+                transform: rotate(45deg);
+            }
+            #up {
+                border-right: none;
+                border-bottom: none;
+            }
+            #right {
+                border-left: none;
+                border-bottom: none;
+            }
+            #left {
+                border-right: none;
+                border-top: none;
+            }
+            #down {
+                border-left: none;
+                border-top: none;
+            }
+            body {
+                background-color: black;
+                box-sizing: border-box;
+                overflow-y: hidden;
+            }
+            button {
+                margin: 5px;
+                background-color: black;
+                color: white;
+                border: 3px solid white;
+                width: 50px;
+                height: 50px;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="400" height="400"></canvas>
+        <p id="score">Score: <span id="score-display">0</span></p>
+        <div id="buttons">
+            <button id="up"></button><button id="right"></button><br /><button
+                id="left"
+            ></button
+            ><button id="down"></button>
+        </div>
+        <script type="module"></script>
+    </body>
+</html>
